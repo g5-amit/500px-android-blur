@@ -47,11 +47,13 @@ public class BlurringView extends View {
     public void setBlurredView(View blurredView) {
         mBlurredView = blurredView;
     }
+    
+    
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (mBlurredView != null) {
+        if (mBlurredView != null && !mBlurViewDetached) {
             if (prepare()) {
                 // If the background of the blurred view is a color drawable, we use it to clear
                 // the blurring canvas, which ensures that edges of the child views are blurred
@@ -135,6 +137,7 @@ public class BlurringView extends View {
 
             mBlurringCanvas = new Canvas(mBitmapToBlur);
             mBlurringCanvas.scale(1f / mDownsampleFactor, 1f / mDownsampleFactor);
+            if(mBlurViewDetached) return false;
             mBlurInput = Allocation.createFromBitmap(mRenderScript, mBitmapToBlur,
                     Allocation.MipmapControl.MIPMAP_NONE, Allocation.USAGE_SCRIPT);
             mBlurOutput = Allocation.createTyped(mRenderScript, mBlurInput.getType());
@@ -148,10 +151,17 @@ public class BlurringView extends View {
         mBlurScript.forEach(mBlurOutput);
         mBlurOutput.copyTo(mBlurredBitmap);
     }
+    
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        mBlurViewDetached = false;
+    }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        mBlurViewDetached = true;
         if (mRenderScript != null) {
             mRenderScript.destroy();
         }
@@ -169,5 +179,6 @@ public class BlurringView extends View {
     private RenderScript mRenderScript;
     private ScriptIntrinsicBlur mBlurScript;
     private Allocation mBlurInput, mBlurOutput;
+    private boolean mBlurViewDetached;
 
 }
